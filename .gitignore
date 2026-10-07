@@ -1,0 +1,10 @@
+data/
+dist/
+.backup/
+.claude/
+node_modules/
+*.log
+runtime/
+.env
+LoL Coach.old.exe
+CLAUDE.md

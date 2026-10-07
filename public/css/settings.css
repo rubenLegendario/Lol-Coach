@@ -1,0 +1,23 @@
+/* LoL Coach — Ajustes. */
+
+/* ---------- Ajustes ---------- */
+.opts { display: grid; gap: 2px; }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 10px; border-radius: 10px; transition: background 0.15s, opacity 0.15s; }
+.opt:hover { background: rgba(255, 255, 255, 0.03); }
+.opt.master { margin-bottom: 8px; padding: 10px 12px; background: var(--glass-2); border: 1px solid var(--line); }
+.opt.sub { padding-left: 28px; }
+.opt.off { opacity: 0.4; }
+.opt-l { font-weight: 600; font-size: 13.5px; }
+.sw { position: relative; flex: none; width: 42px; height: 24px; padding: 0; border: 0; border-radius: 99px; background: rgba(255, 255, 255, 0.12); cursor: pointer; transition: background 0.2s; }
+.sw span { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); transition: transform 0.2s var(--ease); }
+.sw.on { background: linear-gradient(180deg, #f3d79c, #c99c4f); }
+.sw.on span { transform: translateX(18px); }
+.sw:disabled { cursor: not-allowed; }
+
+.ov-place { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; padding: 10px 12px; border-radius: 12px; background: var(--glass-2); border: 1px dashed var(--line-2); }
+.ov-place.editing { border-color: rgba(210, 167, 91, 0.6); background: linear-gradient(100deg, rgba(210, 167, 91, 0.12), transparent 70%), var(--glass-2); }
+.ov-lock { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--gold-soft); color: var(--gold-2); }
+.ov-lock .svg { width: 15px; height: 15px; }
+.voice-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 4px 10px 12px; }
+.voice-tools .inp.sel { max-width: 220px; }
+.voice-tools.off { opacity: 0.4; }

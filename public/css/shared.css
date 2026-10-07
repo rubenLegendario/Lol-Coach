@@ -1,0 +1,158 @@
+/* LoL Coach — Componentes compartidos: build, listas de jugadores, notas, cronología, mapa de muertes, power spikes, avisos, gráficas, menú de jugador. */
+
+/* ---------- Build ---------- */
+.bhero { position: relative; overflow: hidden; border-radius: var(--r-l) var(--r-l) 0 0; padding: 20px 20px 18px; isolation: isolate; }
+.bhero .art { position: absolute; inset: 0; background-size: cover; background-position: 65% 18%; z-index: -2; }
+.bhero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(10, 13, 20, 0.97) 20%, rgba(10, 13, 20, 0.72) 58%, rgba(10, 13, 20, 0.25)), linear-gradient(0deg, rgba(10, 13, 20, 0.95), transparent 70%); }
+.bh-name { font-family: var(--display); font-weight: 700; font-size: 44px; line-height: 0.95; text-transform: uppercase; letter-spacing: 0.01em; text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6); }
+.bh-stats { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+.bh-stat .v { font-family: var(--display); font-weight: 700; font-size: 20px; line-height: 1; }
+.bh-stat .k { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); margin-top: 3px; }
+.mu { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 4px 12px 4px 4px; border-radius: 12px; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--line-2); font-size: 12px; backdrop-filter: blur(8px); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.bbody { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 0; border-top: 1px solid var(--line); }
+.bbody > div { padding: 4px 18px 18px; min-width: 0; }
+.bbody > div + div { border-left: 1px solid var(--line); }
+@media (max-width: 760px) { .bbody { grid-template-columns: minmax(0, 1fr); } .bbody > div + div { border-left: 0; border-top: 1px solid var(--line); } }
+.runes { display: flex; gap: 14px; align-items: center; }
+.keystone { width: 58px; height: 58px; flex: none; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle, rgba(210, 167, 91, 0.28), rgba(210, 167, 91, 0) 70%); }
+.keystone img { width: 50px; height: 50px; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6)); }
+.rrow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rrow img { width: 25px; height: 25px; border-radius: 50%; background: rgba(0, 0, 0, 0.35); box-shadow: 0 0 0 1px var(--line-2); }
+.rrow img.st { width: 20px; height: 20px; box-shadow: none; background: none; opacity: 0.9; }
+.rsep { width: 1px; height: 20px; background: var(--line-2); margin: 0 3px; }
+.shards { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 10px; }
+.bopt { padding: 10px 12px; border-radius: 13px; background: var(--glass-2); border: 1px solid var(--line); }
+.bopt + .bopt { margin-top: 8px; }
+.bopt.first { background: linear-gradient(100deg, var(--gold-soft), transparent 70%), var(--glass-2); border-color: rgba(210, 167, 91, 0.4); }
+.bopt-n { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; min-width: 0; }
+.bopt-n .svg { color: var(--gold); }
+.path { display: flex; align-items: center; gap: 5px; margin: 9px 0 7px; flex-wrap: wrap; }
+.kv-line { display: flex; align-items: center; gap: 8px; }
+.skills { display: grid; grid-template-columns: 22px repeat(18, minmax(12px, 1fr)); gap: 3px; font-size: 10.5px; }
+.skills div { height: 22px; display: grid; place-items: center; border-radius: 5px; background: rgba(255, 255, 255, 0.03); font-variant-numeric: tabular-nums; }
+.skills .k { background: none; font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--gold); }
+.skills .on { background: linear-gradient(180deg, #ecca85, #b88f4a); color: #1b1407; font-weight: 800; }
+.skills .on.r { background: linear-gradient(180deg, #ff7282, #d02c43); color: #fff; }
+.skills .cur { box-shadow: 0 0 0 2px var(--win), 0 0 12px rgba(47, 214, 144, 0.5); }
+
+/* ---------- Jugadores (listas) ---------- */
+.prow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--glass-2); border: 1px solid var(--line); }
+.prow.me { border-color: rgba(210, 167, 91, 0.5); }
+.pn { display: flex; align-items: center; gap: 6px; font-weight: 700; min-width: 0; }
+.form-dots { display: flex; gap: 2px; margin-top: 5px; }
+.form-dots span { width: 6px; height: 6px; border-radius: 2px; background: var(--loss); opacity: 0.85; }
+.form-dots span.w { background: var(--win); }
+
+/* ---------- Ventana de poder ---------- */
+.pw-head { display: grid; gap: 10px; }
+.pw-v { font-family: var(--display); font-weight: 700; font-size: 28px; line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
+.pw-meter { position: relative; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.pw-meter > div { position: absolute; top: 0; bottom: 0; border-radius: 99px; transition: all 0.5s var(--ease); }
+.pw-meter > span { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; background: rgba(255, 255, 255, 0.55); }
+.pw-vs { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; margin-top: 14px; }
+.pw-face { display: grid; justify-items: center; gap: 4px; }
+.pw-tbl { display: grid; gap: 4px; }
+.pw-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; padding: 5px 10px; border-radius: 9px; background: var(--glass-2); font-variant-numeric: tabular-nums; font-size: 13px; }
+.pw-row > span:first-child { text-align: left; }
+.pw-row > span:last-child { text-align: right; }
+.pw-k { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); text-align: center; }
+
+/* ---------- Mapa de muertes ---------- */
+.dm-grid { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 700px) { .dm-grid { grid-template-columns: minmax(0, 1fr); } }
+.dmap { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; border: 1px solid var(--line-2); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
+.dmap img { width: 100%; height: 100%; object-fit: cover; filter: saturate(0.75) brightness(0.8); }
+.dpt { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--gold-2); border: 2px solid #0b0f17; box-shadow: 0 0 10px rgba(243, 215, 156, 0.7); display: grid; place-items: center; font-size: 8px; font-weight: 800; color: #0b0f17; }
+.dpt.early { background: var(--ally); box-shadow: 0 0 10px rgba(74, 169, 255, 0.7); }
+.dpt.gank { background: var(--enemy); box-shadow: 0 0 12px rgba(255, 84, 104, 0.85); }
+.dmap:has(.dpt:nth-child(2)) .dpt:not(:empty) { width: 18px; height: 18px; margin: -9px 0 0 -9px; font-size: 10px; }
+.zrow { display: grid; grid-template-columns: 110px minmax(0, 1fr) 40px; gap: 10px; align-items: center; margin-bottom: 7px; font-size: 12.5px; }
+.zrow > span:last-child { text-align: right; }
+.death-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 11px; background: var(--glass-2); border: 1px solid var(--line); font-size: 13px; }
+.dnum { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; background: var(--gold-2); color: #0b0f17; }
+.dnum.early { background: var(--ally); }
+.dnum.gank { background: var(--enemy); color: #fff; }
+
+/* ---------- Notas ---------- */
+.note-box + .note-box { margin-top: 4px; }
+.note-ta { display: block; width: 100%; min-height: 78px; resize: vertical; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, 0.3); color: var(--text); font: inherit; font-size: 13px; line-height: 1.5; transition: border-color 0.15s, box-shadow 0.15s; }
+.note-ta.s { min-height: 56px; }
+.note-ta::placeholder { color: var(--text-3); }
+.note-ta:focus { outline: none; border-color: rgba(210, 167, 91, 0.6); box-shadow: 0 0 0 3px var(--gold-soft); }
+.note-status { color: var(--gold-2); }
+.nb-i { padding: 10px 12px; border-radius: 12px; background: var(--glass-2); border: 1px solid var(--line); }
+.nb-t { margin-top: 8px; font-size: 13px; color: var(--text-2); white-space: pre-wrap; }
+
+/* ---------- Cronología ---------- */
+.tl { position: relative; margin-top: 14px; }
+.tl-row { position: relative; height: 28px; }
+.tl-ev { position: absolute; top: 4px; width: 22px; height: 22px; margin-left: -11px; border-radius: 7px; display: grid; place-items: center; background: var(--glass-3); border: 1px solid var(--line-2); color: var(--text-2); cursor: default; transition: transform 0.15s; }
+.tl-ev:hover { transform: scale(1.25); z-index: 2; }
+.tl-ev .svg { width: 12px; height: 12px; }
+.tl-row.ally .tl-ev { border-color: rgba(74, 169, 255, 0.5); color: var(--ally); }
+.tl-row.enemy .tl-ev { border-color: rgba(255, 84, 104, 0.5); color: var(--enemy); }
+.tl-ev.baron, .tl-ev.elder, .tl-ev.inhib { width: 26px; height: 26px; margin-left: -13px; top: 1px; background: rgba(210, 167, 91, 0.18); }
+.tl-ev.death { background: var(--enemy-soft); }
+.tl-ev.kill { background: var(--win-soft); color: var(--win); border-color: rgba(47, 214, 144, 0.5); }
+.tl-axis { position: relative; height: 18px; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+.tl-axis span { position: absolute; top: 2px; transform: translateX(-50%); font-size: 10px; color: var(--text-3); }
+.moments { display: grid; gap: 4px; max-height: 360px; overflow: auto; padding-right: 4px; }
+.moment { display: grid; grid-template-columns: 34px 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--glass-2); font-size: 12.5px; }
+.moment.ally { box-shadow: inset 3px 0 0 var(--ally); }
+.moment.enemy { box-shadow: inset 3px 0 0 var(--enemy); }
+.m-t { font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--text-3); }
+.m-ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: rgba(255, 255, 255, 0.05); color: var(--text-2); }
+.m-ic .svg { width: 13px; height: 13px; }
+.m-ic.kill { color: var(--win); } .m-ic.death { color: var(--loss); } .m-ic.baron, .m-ic.elder, .m-ic.dragon { color: var(--gold-2); }
+
+/* ---------- Power spikes y alertas ---------- */
+.spikes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 560px) { .spikes { grid-template-columns: minmax(0, 1fr); } }
+.spike { padding: 12px; border-radius: 14px; background: var(--glass-2); border: 1px solid var(--line); min-width: 0; }
+.spike.me { box-shadow: inset 3px 0 0 var(--gold); }
+.spike.them { box-shadow: inset 3px 0 0 var(--enemy); }
+.spike .ring .ic { width: 30px; height: 30px; border-radius: 50%; }
+
+/* ---------- Avisos emergentes (sutiles, movibles, fijables) ---------- */
+.toasts { position: fixed; bottom: 20px; right: 22px; z-index: 90; display: grid; gap: 7px; width: min(360px, calc(100vw - 32px)); pointer-events: none; }
+.toasts[style*="top"] { bottom: auto; }
+@keyframes slide { from { opacity: 0; transform: translateX(30px); } }
+.atoast { position: relative; overflow: hidden; display: flex; gap: 10px; align-items: center; padding: 9px 10px 10px 12px; border-radius: 12px; background: rgba(12, 16, 24, 0.52); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); backdrop-filter: blur(12px); color: var(--text); font-size: 12.5px; font-weight: 500; line-height: 1.4; opacity: 0.86; pointer-events: auto; cursor: grab; user-select: none; animation: slide 0.35s var(--ease) both; transition: opacity 0.2s, background 0.2s; }
+.atoast:hover, .atoast.pinned { opacity: 1; background: rgba(12, 16, 24, 0.82); }
+.atoast.good { box-shadow: inset 3px 0 0 var(--win), 0 10px 30px rgba(0, 0, 0, 0.35); }
+.atoast.bad { box-shadow: inset 3px 0 0 var(--loss), 0 10px 30px rgba(0, 0, 0, 0.35); }
+.atoast.warn { box-shadow: inset 3px 0 0 var(--warn), 0 10px 30px rgba(0, 0, 0, 0.35); }
+.atoast.info { box-shadow: inset 3px 0 0 var(--ally), 0 10px 30px rgba(0, 0, 0, 0.35); }
+.atoast.pinned { border-color: rgba(210, 167, 91, 0.35); }
+.atoast .at-ic { flex: none; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; }
+.atoast .at-ic .svg { width: 13px; height: 13px; }
+.atoast.good .at-ic { background: var(--win-soft); color: var(--win); }
+.atoast.bad .at-ic { background: var(--enemy-soft); color: var(--loss); }
+.atoast.warn .at-ic { background: var(--warn-soft); color: var(--warn); }
+.atoast.info .at-ic { background: var(--ally-soft); color: var(--ally); }
+.atoast .at-tx { flex: 1; min-width: 0; }
+.atoast .at-tx .num { color: var(--text-3); font-weight: 700; margin-right: 3px; }
+.atoast .at-btns { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+.atoast:hover .at-btns, .atoast.pinned .at-btns { opacity: 1; }
+.atoast .at-btns button { width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--text-3); cursor: pointer; }
+.atoast .at-btns button:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+.atoast .at-btns button.on { color: var(--gold-2); }
+.atoast .at-btns .svg { width: 13px; height: 13px; }
+.atoast .at-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: calc((1 - var(--age)) * 100%); background: currentColor; opacity: 0.4; transition: width 1s linear; }
+.atoast.good .at-bar { color: var(--win); } .atoast.bad .at-bar { color: var(--loss); } .atoast.warn .at-bar { color: var(--warn); } .atoast.info .at-bar { color: var(--ally); }
+body.dragging, body.dragging .atoast { cursor: grabbing; user-select: none; }
+
+/* ---------- Menú de jugador (partida o perfil) ---------- */
+.pmenu-bg { position: fixed; inset: 0; z-index: 95; }
+.pmenu { position: fixed; z-index: 96; width: 240px; padding: 6px; border-radius: 14px; background: rgba(16, 21, 31, 0.97); border: 1px solid var(--line-2); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); backdrop-filter: blur(16px); animation: fadein 0.12s ease both; }
+@keyframes fadein { from { opacity: 0; transform: translateY(-4px); } }
+.pmenu-t { padding: 6px 10px 8px; font-size: 12px; font-weight: 700; color: var(--text-3); border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.pmenu button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.pmenu button:hover { background: var(--glass-3); }
+.pmenu button .svg { width: 16px; height: 16px; color: var(--gold); flex: none; }
+.pmenu button small { display: block; font-size: 11px; font-weight: 500; color: var(--text-3); }
+
+/* ---------- Gráfica de probabilidad ---------- */
+.prob-chart .grid { stroke: rgba(255, 255, 255, 0.05); stroke-width: 1; }
+.prob-chart .lt { fill: none; stroke-width: 2.4; stroke-linejoin: round; }

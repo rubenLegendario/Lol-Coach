@@ -1,0 +1,51 @@
+/* LoL Coach — Builds y tier list. */
+
+/* ---------- Builds (estadísticas de objetos) ---------- */
+.b-hero .phero-in { align-items: center; }
+.b-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+.b-kpis { display: flex; gap: 22px; flex-wrap: wrap; justify-content: flex-end; padding: 12px 18px; border-radius: 16px; background: rgba(5, 7, 11, 0.6); backdrop-filter: blur(10px); border: 1px solid var(--line); }
+.b-kpis .kv2 .v { font-size: 26px; }
+.g-builds { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+@media (max-width: 1100px) { .g-builds { grid-template-columns: minmax(0, 1fr); } }
+.bs-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 104px 66px; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 10px; }
+.bs-row + .bs-row { border-top: 1px solid var(--line); }
+.bs-row.best { background: linear-gradient(90deg, rgba(47, 214, 144, 0.10), transparent 70%); }
+.bs-row.low { opacity: 0.5; }
+.bs-h { padding-top: 0; padding-bottom: 6px; border-top: 0 !important; }
+.bs-h > span, .bs-h > button { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); text-align: right; }
+.bs-h > span:first-child { text-align: left; }
+.bs-h > button { border: 0; background: none; cursor: pointer; padding: 0; }
+.bs-h > button.on, .bs-h > button:hover { color: var(--gold-2); }
+.bs-items { display: flex; align-items: center; gap: 4px; min-width: 0; flex-wrap: wrap; }
+.bs-items .chev .svg { width: 12px; height: 12px; }
+.bs-n { text-align: right; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bs-n .pr { display: block; }
+.bs-bar { display: block; height: 3px; margin-top: 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.bs-bar i { display: block; height: 100%; background: var(--gold); border-radius: 99px; }
+.b-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1100px) { .b-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .b-slots { grid-template-columns: minmax(0, 1fr); } .bs-row { grid-template-columns: minmax(0, 1fr) 52px 70px 52px; } }
+.b-slot .bs-row { grid-template-columns: minmax(0, 1fr) 52px 74px 56px; gap: 8px; }
+.b-slot .bs-items .ic { width: 30px; height: 30px; }
+.bs-items .bs-name { margin-left: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.b-filters .seg button { display: inline-flex; align-items: center; gap: 5px; }
+.b-filters .seg .pos-ic { width: 14px; height: 14px; }
+
+/* ---------- Tier list ---------- */
+.b-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; }
+.b-tabs .svg { width: 14px; height: 14px; }
+.tli-row { width: 100%; display: grid; grid-template-columns: 34px minmax(0, 1fr) 70px 80px 80px 80px 84px; gap: 10px; align-items: center; padding: 3px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; text-align: right; cursor: pointer; font-variant-numeric: tabular-nums; }
+.tli-row + .tli-row { border-top: 1px solid var(--line); border-radius: 0; }
+.tli-row:not(.tli-h):hover { background: var(--glass-2); border-radius: 10px; }
+.tli-row > span:first-child, .tli-c { text-align: left; }
+.tli-c { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.tli-c .pos-ic { width: 16px; height: 16px; opacity: 0.8; }
+.tli-h { cursor: default; padding-bottom: 8px; }
+.tli-h > span, .tli-h > button { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.tli-h > button { border: 0; background: none; padding: 0; text-align: right; cursor: pointer; font: inherit; font-size: 10.5px; }
+.tli-h > button.on, .tli-h > button:hover { color: var(--gold-2); }
+.tli-mini .pb { padding: 14px 16px; }
+.tli-mini-l { display: flex; gap: 10px; flex-wrap: wrap; }
+.tli-mini-l button { display: grid; justify-items: center; gap: 4px; border: 0; background: none; color: var(--text); cursor: pointer; font: inherit; font-size: 12px; padding: 0; }
+@media (max-width: 760px) { .tli-row { grid-template-columns: 26px minmax(0, 1fr) 44px 60px 60px; } .tli-row > :nth-child(6), .tli-row > :nth-child(7) { display: none; } }
+.tli-h > span:nth-child(-n+2) { text-align: left; }

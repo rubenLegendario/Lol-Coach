@@ -1,0 +1,23 @@
+/* LoL Coach — Buscador y aviso de "en partida". */
+
+/* ---------- Buscador ---------- */
+.searchbox { display: flex; align-items: center; gap: 10px; }
+.searchbox > .svg { width: 20px; height: 20px; color: var(--gold); }
+.searchbox .inp { flex: 1; height: 44px; font-size: 15px; padding: 0 14px; }
+.searchbox .btn { height: 44px; padding: 0 22px; }
+
+/* ---------- En partida (perfil de otro jugador) ---------- */
+.live-b { border-color: rgba(255, 84, 104, 0.35); background: linear-gradient(100deg, rgba(255, 84, 104, 0.08), transparent 55%), var(--glass); }
+.lb-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.live-pill { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 8px; background: rgba(255, 84, 104, 0.16); color: var(--loss); font-size: 11px; font-weight: 800; letter-spacing: 0.12em; }
+.live-pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--loss); box-shadow: 0 0 0 0 rgba(255, 84, 104, 0.6); animation: livepulse 1.6s infinite; }
+@keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(255, 84, 104, 0.6); } 70% { box-shadow: 0 0 0 8px rgba(255, 84, 104, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 84, 104, 0); } }
+.lb-teams { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 14px; }
+@media (max-width: 760px) { .lb-teams { grid-template-columns: minmax(0, 1fr); } }
+.lb-team { display: grid; gap: 5px; }
+.lb-p { display: flex; align-items: center; gap: 10px; padding: 6px 9px; border-radius: 11px; background: var(--glass-2); border: 1px solid var(--line); min-width: 0; }
+.lb-team.ally .lb-p { box-shadow: inset 3px 0 0 var(--ally); } .lb-team.enemy .lb-p { box-shadow: inset 3px 0 0 var(--enemy); }
+.lb-p.me { border-color: rgba(210, 167, 91, 0.55); }
+.lb-sp { display: flex; gap: 3px; }
+.lb-mini { display: flex; align-items: center; gap: 8px; padding: 0 4px; font-size: 12.5px; color: var(--text-2); }
+.lb-mini .svg { width: 14px; height: 14px; }

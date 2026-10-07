@@ -1,0 +1,18 @@
+{
+  "name": "lol-coach",
+  "version": "1.1.0",
+  "updateRepo": "rubenLegendario/Lol-Coach",
+  "description": "Asistente en tiempo real para League of Legends: picks, runas, builds, info de rivales y consejos en partida",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "demo": "node src/index.js --demo",
+    "build:exe": "node scripts/make-icon.mjs && powershell -ExecutionPolicy Bypass -File scripts/build-exe.ps1",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
