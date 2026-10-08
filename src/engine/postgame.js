@@ -9,6 +9,9 @@ import { assignPositions, roughPosition } from '../util/positions.js';
 import { toMapPercent, zoneOf } from '../util/mapzones.js';
 import { recordMatchup, recordTrend } from '../store.js';
 import { computeBadges, mvpRanking } from './badges.js';
+import { champProfile } from '../data/champinfo.js';
+import { coachFor, coachInfo, reviewGame } from './coach/index.js';
+import { fightDeaths, objectiveParticipation, earlyRoams } from './coach/common.js';
 
 const QUEUES = {
   420: 'Clasificatoria Solo/Dúo', 440: 'Clasificatoria Flexible', 400: 'Normal (reclutamiento)', 430: 'Normal (a ciegas)',
@@ -16,14 +19,7 @@ const QUEUES = {
 };
 const RANKED = new Set([420, 440]);
 
-// Referencias orientativas por posición (jugador medio de oro-platino que quiere subir)
-const TARGET = {
-  csMin: { TOP: 7.0, MIDDLE: 7.3, BOTTOM: 7.5, JUNGLE: 5.8 },
-  cs10: { TOP: 65, MIDDLE: 70, BOTTOM: 70, JUNGLE: 55 },
-  visionMin: { UTILITY: 2.0, JUNGLE: 1.1, TOP: 0.7, MIDDLE: 0.7, BOTTOM: 0.7 },
-  kp: { JUNGLE: 0.55, UTILITY: 0.55, TOP: 0.45, MIDDLE: 0.5, BOTTOM: 0.5 },
-  dmgShare: { MIDDLE: 0.25, BOTTOM: 0.25, TOP: 0.2, JUNGLE: 0.15, UTILITY: 0.08 },
-};
+// Las referencias por rol (CS/min, visión, KP, daño…) y los consejos están en ./coach/ (un coach por rol)
 const POS_ES = { TOP: 'Top', JUNGLE: 'Jungla', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support' };
 
 const grade = (s) => (s == null ? null : s >= 85 ? 'S' : s >= 70 ? 'A' : s >= 55 ? 'B' : s >= 40 ? 'C' : 'D');
@@ -74,7 +70,7 @@ async function personalBaseline(lcu, puuid, excludeId) {
  * el texto cambia; las de tu cuenta conservan la clave de siempre para no repetir los análisis ya hechos.
  */
 export async function analyzeGame(lcu, gameId, puuid, { record = true, other = false } = {}) {
-  const a = await cached(`postgame_v7_${gameId}_${puuid}${other ? '_o' : ''}`, 365 * 24 * 3600_000, () => doAnalyze(lcu, gameId, puuid, { other }));
+  const a = await cached(`postgame_v8_${gameId}_${puuid}${other ? '_o' : ''}`, 365 * 24 * 3600_000, () => doAnalyze(lcu, gameId, puuid, { other }));
   if (record) {
     recordMatchup(puuid, a); // tu historial de enfrentamientos crece con cada partida analizada
     recordTrend(puuid, a);
@@ -215,6 +211,9 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
     visionMin: s.visionScore / min,
     controlWards: s.visionWardsBoughtInGame,
     wardsPlaced: s.wardsPlaced,
+    wardsKilled: s.wardsKilled || 0,
+    trinket: s.item6 || null,
+    turretDmg: s.damageDealtToTurrets || 0,
     objDmg: s.damageDealtToObjectives,
   };
 
@@ -243,6 +242,8 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
   const events = frames.flatMap((f) => f.events || []);
   const enemyJungler = enemies.find((p) => positions.get(p.participantId) === 'JUNGLE')?.participantId;
   const enemyIds = new Set(enemies.map((p) => p.participantId));
+  const allyIds = new Set(allies.map((p) => p.participantId));
+  const fights = fightDeaths(events.filter((e) => e.type === 'CHAMPION_KILL'), pid, allyIds);
   const deaths = events.filter((e) => e.type === 'CHAMPION_KILL' && e.victimId === pid).map((e) => {
     const involved = [e.killerId, ...(e.assistingParticipantIds || [])];
     const { x, y } = e.position || { x: 7500, y: 7500 };
@@ -253,19 +254,18 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
       gank: myPos !== 'JUNGLE' && e.timestamp < 15 * 60000 && enemyJungler != null && involved.includes(enemyJungler),
       enemySide,
       by: involved.filter((id) => enemyIds.has(id)).length,
+      fight: !!fights.get(e.timestamp)?.fight,
+      first: !!fights.get(e.timestamp)?.first,
       x,
       y,
       killer: killer ? ddragon.champView(killer.championId) : null,
     };
   });
   const earlyDeaths = deaths.filter((d) => d.time < 14 * 60000);
-  const gankDeaths = deaths.filter((d) => d.gank);
-  const sideDeaths = deaths.filter((d) => d.enemySide && d.time > 10 * 60000);
 
   // Participación por fases
   const phaseOf = (ms) => (ms < 14 * 60000 ? 'early' : ms < 25 * 60000 ? 'mid' : 'late');
   const phase = { early: { tk: 0, mine: 0, deaths: 0 }, mid: { tk: 0, mine: 0, deaths: 0 }, late: { tk: 0, mine: 0, deaths: 0 } };
-  const allyIds = new Set(allies.map((p) => p.participantId));
   for (const e of events.filter((x) => x.type === 'CHAMPION_KILL')) {
     const ph = phase[phaseOf(e.timestamp)];
     if (allyIds.has(e.killerId)) {
@@ -275,8 +275,9 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
     if (e.victimId === pid) ph.deaths++;
   }
 
-  // ---- Notas por fase ----
-  const t = (k) => (myPos ? TARGET[k][myPos] : null);
+  // ---- Notas por fase (con las referencias del coach de tu rol) ----
+  const coach = coachFor(myPos, { aram: !isSR });
+  const t = (k) => coach.targets[k] ?? null;
   const scores = {};
   if (isSR && frames.length > 14) {
     let e = 55;
@@ -298,60 +299,26 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
   if (t('visionMin')) overall += (m.visionMin - t('visionMin')) * 8;
   scores.overall = clamp(overall);
 
-  // ---- Las 3 cosas a mejorar y lo que hiciste bien ----
+  // ---- Las 3 cosas a mejorar, lo que hiciste bien y sugerencias: las decide el coach de tu rol ----
   const base = isSR ? await personalBaseline(lcu, puuid, gameId) : null;
-  const issues = [];
-  const goods = [];
-  const issue = (severity, title, detail, tip) => issues.push({ severity, title, detail, tip });
-  const good = (score, title, detail) => goods.push({ score, title, detail });
-
-  if (gankDeaths.length >= 2) {
-    issue(3 + gankDeaths.length, 'Te gankean en la fase de líneas', `${gankDeaths.length} muertes con el jungla rival antes del minuto 15 (${gankDeaths.map((d) => fmtMin(d.time)).join(', ')}).`, 'Wardea el río o el arbusto lateral hacia el minuto 2:45 y el 6:00, y antes de empujar mira en el mapa dónde se vio por última vez al jungla rival.');
-  }
-  if (m.deaths >= 7 || (base && m.deaths >= 5 && m.deaths > base.deaths + 2)) {
-    issue(m.deaths - 3, 'Mueres demasiado', `${m.deaths} muertes${base ? ` (tu media: ${base.deaths.toFixed(1)})` : ''}; ${earlyDeaths.length} antes del minuto 14.`, 'Cada muerte regala oro y tiempo de mapa. Antes de entrar en una pelea, cuenta cuántos rivales ves en el minimapa; si faltan 2 o más, no avances.');
-  }
-  if (sideDeaths.length >= 3) {
-    issue(sideDeaths.length, 'Mueres en territorio enemigo', `${sideDeaths.length} muertes en su mitad del mapa después del minuto 10.`, 'Si vas a empujar una línea lateral o meterte en su jungla, hazlo solo cuando veas a sus jugadores clave en otro sitio del mapa.');
-  }
-  if (lane[14]?.goldDiff != null && lane[14].goldDiff <= -800 && myPos !== 'JUNGLE') {
-    issue(Math.abs(lane[14].goldDiff) / 400, 'Pierdes la fase de líneas', `Al minuto 14 ibas ${lane[14].goldDiff} de oro y ${lane[14].csDiff} CS frente a ${ddragon.champ(opp.championId)?.name}.`, 'Revisa el matchup antes de jugar (la app te lo enseña en la selección) y céntrate en no perder oleadas: un CS perdido por minuto son ~200 de oro cada 10 minutos.');
-  } else if (lane[14]?.goldDiff >= 800) {
-    good(lane[14].goldDiff / 300, 'Ganaste tu línea', `+${lane[14].goldDiff} de oro y ${lane[14].csDiff >= 0 ? '+' : ''}${lane[14].csDiff} CS al minuto 14.`);
-  }
-  if (t('csMin') && m.csMin < t('csMin') - 0.8) {
-    issue((t('csMin') - m.csMin) * 2, 'Farmeas poco', `${m.csMin.toFixed(1)} CS/min (objetivo ${t('csMin')})${lane[10] ? `; al minuto 10 llevabas ${lane[10].cs} (objetivo ${t('cs10')})` : ''}${base ? `. Tu media: ${base.csMin.toFixed(1)}` : ''}.`, 'Practica el último golpe 10 minutos en la Herramienta de práctica y, en partida, no dejes oleadas grandes al volver a base: empújala antes de irte.');
-  } else if (t('csMin') && m.csMin >= t('csMin') + 0.3) {
-    good(m.csMin - t('csMin') + 1, 'Buen farmeo', `${m.csMin.toFixed(1)} CS/min.`);
-  }
-  if (t('visionMin') && m.visionMin < t('visionMin') - 0.3) {
-    issue((t('visionMin') - m.visionMin) * 5, 'Poca visión', `${m.visionMin.toFixed(2)} de visión por minuto (objetivo ${t('visionMin')}); compraste ${m.controlWards} ward${m.controlWards === 1 ? '' : 's'} de control.`, 'Compra un ward de control en cada vuelta a base y cambia al trinket de barrido cuando seas support o jungla.');
-  } else if (t('visionMin') && m.visionMin >= t('visionMin') + 0.4) {
-    good(2, 'Buena visión', `${m.visionMin.toFixed(2)} de visión por minuto.`);
-  }
-  if (isSR && min > 18 && m.kp < (t('kp') || 0.5) - 0.12) {
-    issue(((t('kp') || 0.5) - m.kp) * 20, 'Participas poco en las peleas', `Participación en kills del ${Math.round(m.kp * 100)}% (objetivo ${Math.round((t('kp') || 0.5) * 100)}%).`, 'Cuando caiga un objetivo importante (dragón, heraldo, barón) o tu equipo agrupe, ve con ellos aunque pierdas alguna oleada.');
-  } else if (m.kp >= 0.65) {
-    good(m.kp * 4, 'Muy presente en las peleas', `Participaste en el ${Math.round(m.kp * 100)}% de las kills.`);
-  }
-  if (t('dmgShare') && ['MIDDLE', 'BOTTOM', 'TOP'].includes(myPos) && m.dmgShare < t('dmgShare') - 0.07) {
-    issue((t('dmgShare') - m.dmgShare) * 25, 'Haces poco daño para tu rol', `${Math.round(m.dmgShare * 100)}% del daño de tu equipo (objetivo ~${Math.round(t('dmgShare') * 100)}%).`, 'En las peleas busca una posición desde la que puedas pegar sin morir, y revisa que tu build vaya acorde a la composición rival.');
-  } else if (t('dmgShare') && m.dmgShare >= t('dmgShare') + 0.06) {
-    good(m.dmgShare * 10, 'Mucho daño', `${Math.round(m.dmgShare * 100)}% del daño de tu equipo.`);
-  }
-  if (isSR && m.controlWards === 0 && min > 20) {
-    issue(1.5, 'No compraste ningún ward de control', 'Ni uno en toda la partida.', 'Cuestan 75 de oro y pueden salvarte de un gank o asegurar un dragón.');
-  }
-  if (m.kda >= 4 && m.deaths > 2) good(m.kda / 2, 'Gran KDA', `${m.kills}/${m.deaths}/${m.assists} (${m.kda.toFixed(1)}).`);
-  if (m.deaths <= 2 && min > 20) good(3, 'Muy pocas muertes', `Solo ${m.deaths} muerte${m.deaths === 1 ? '' : 's'}.`);
-  if (!isSR && m.deaths >= 10) issue(m.deaths / 3, 'Mueres demasiado', `${m.deaths} muertes.`, 'En ARAM también: si no puedes pegar sin morir, espera a que tu frontline entre primero.');
-
-  const moments = isSR ? keyMoments(events, game, pid, me, allyIds) : [];
-  issues.sort((a, b) => b.severity - a.severity);
-  goods.sort((a, b) => b.score - a.score);
-
   const team = game.teams.find((x) => x.teamId === me.teamId);
   const enemyTeam = game.teams.find((x) => x.teamId !== me.teamId);
+  const objectives = team && enemyTeam ? {
+    ally: { dragons: team.dragonKills, barons: team.baronKills, towers: team.towerKills, grubs: team.hordeKills, heralds: team.riftHeraldKills },
+    enemy: { dragons: enemyTeam.dragonKills, barons: enemyTeam.baronKills, towers: enemyTeam.towerKills, grubs: enemyTeam.hordeKills, heralds: enemyTeam.riftHeraldKills },
+  } : null;
+  const teamTurretDmg = sum(allies, (x) => x.damageDealtToTurrets || 0);
+  const review = reviewGame(coach, {
+    sr: isSR, min, pos: myPos, m, lane, base, phase, deaths, earlyDeaths,
+    oppName: opp ? ddragon.champ(opp.championId)?.name || null : null,
+    objectives,
+    objParticipation: isSR && frames.length ? objectiveParticipation(events, pid, allyIds) : null,
+    roams: isSR ? earlyRoams(events, pid, myPos, me.teamId) : 0,
+    turretShare: teamTurretDmg ? m.turretDmg / teamTurretDmg : null,
+    tank: !!champProfile(me.championId)?.tank,
+  });
+
+  const moments = isSR ? keyMoments(events, game, pid, me, allyIds) : [];
 
   return {
     gameId,
@@ -364,6 +331,7 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
     champ: ddragon.champView(me.championId),
     pos: myPos,
     posLabel: POS_ES[myPos] || null,
+    coach: coachInfo(coach),
     opp: opp ? { champ: ddragon.champView(opp.championId), name: nameOf(opp) } : null,
     viewer: { puuid, name: ident.player.gameName || '?', tag: ident.player.tagLine || '' },
     players: isSR ? playersOf(game, positions, me) : playersOf(game, new Map(), me),
@@ -377,7 +345,7 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
       controlWards: m.controlWards,
       goldMin: Math.round(m.goldMin),
     },
-    targets: myPos ? { csMin: t('csMin'), visionMin: t('visionMin'), kp: t('kp') && Math.round(t('kp') * 100), dmgShare: t('dmgShare') && Math.round(t('dmgShare') * 100) } : {},
+    targets: { csMin: t('csMin'), visionMin: t('visionMin'), kp: t('kp') != null ? Math.round(t('kp') * 100) : null, dmgShare: t('dmgShare') != null ? Math.round(t('dmgShare') * 100) : null, controlWards: isSR ? coach.controlWardTarget(min) : null },
     baseline: base && { deaths: Math.round(base.deaths * 10) / 10, csMin: Math.round(base.csMin * 10) / 10, visionMin: Math.round(base.visionMin * 100) / 100, games: base.games },
     lane: lane[14] ? { at10: lane[10] || null, at14: lane[14] } : null,
     grades: {
@@ -387,8 +355,9 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
       overall: { score: scores.overall, grade: grade(scores.overall) },
     },
     badges: computeBadges(game, pid, { sr: isSR, minutes: min, events, goldChart, lane14: lane[14] || null, csTarget: t('csMin'), pos: myPos, other }),
-    improve: issues.slice(0, 3),
-    strengths: goods.slice(0, 3),
+    improve: review.improve,
+    strengths: review.strengths,
+    suggestions: review.suggestions,
     deaths: deaths.map((d) => ({
       time: fmtMin(d.time),
       minute: Math.floor(d.time / 60000),
@@ -402,10 +371,7 @@ async function doAnalyze(lcu, gameId, puuid, { other = false } = {}) {
     goldChart,
     moments,
     decisive: decisiveMoment(goldChart, moments),
-    objectives: team && enemyTeam && {
-      ally: { dragons: team.dragonKills, barons: team.baronKills, towers: team.towerKills, grubs: team.hordeKills, heralds: team.riftHeraldKills },
-      enemy: { dragons: enemyTeam.dragonKills, barons: enemyTeam.baronKills, towers: enemyTeam.towerKills, grubs: enemyTeam.hordeKills, heralds: enemyTeam.riftHeraldKills },
-    },
+    objectives,
   };
 }
 
@@ -447,7 +413,7 @@ export async function gameSummary(lcu, gameId, puuid, { other = false } = {}) {
       subStyle: ddragon.runeView(me.stats.perkSubStyle),
       goldMin: Math.round(me.stats.goldEarned / Math.max(1, min)),
       players,
-      badges: game.gameDuration >= 300 ? computeBadges(game, pid, { sr: isSR, minutes: min, events, goldChart, lane14, csTarget: myPos ? TARGET.csMin[myPos] : null, pos: myPos, other }) : [],
+      badges: game.gameDuration >= 300 ? computeBadges(game, pid, { sr: isSR, minutes: min, events, goldChart, lane14, csTarget: isSR ? coachFor(myPos).targets.csMin : null, pos: myPos, other }) : [],
     };
   });
 }

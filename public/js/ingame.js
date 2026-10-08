@@ -383,9 +383,8 @@ function viewInGame(g) {
   const icon5 = (list, side) => list.map((x) => `<div class="it-ti ${x.isMe ? 'me' : ''} ${x.isDead ? 'dead' : ''} ${side}" title="${esc(x.champ?.name || '')} · ${x.kills}/${x.deaths}/${x.assists}">${img(x.champ, '')}${x.isDead ? `<span class="it-rs">${x.respawn}</span>` : `<span class="it-lv">${x.level}</span>`}</div>`).join('');
   const top = `<div class="it-top">
     <div class="it-teamrow">${icon5(allies, 'al')}</div>
-    <div class="it-mid"><div class="it-k"><b class="al">${T.ally.kills}</b><span>VS</span><b class="en">${T.enemy.kills}</b></div><div class="it-clock num" id="gtime">${fmtTime(g.gameTime)}</div></div>
+    <div class="it-mid"><div class="it-k"><b class="al">${T.ally.kills}</b><span>VS</span><b class="en">${T.enemy.kills}</b></div>${on('live.draft') ? `<div class="it-prob" title="Probabilidad de victoria estimada ahora mismo (draft + oro + dragones). Es una estimación propia, no un dato de Riot."><b class="${p >= 55 ? 'it-g' : p <= 45 ? 'it-r' : 'it-y'}">${Math.round(p)}%</b><small>Victoria (estim.)</small></div>` : ''}<div class="it-clock num" id="gtime">${fmtTime(g.gameTime)}</div></div>
     <div class="it-teamrow">${icon5(enemies, 'en')}</div>
-    ${on('live.draft') ? `<div class="it-prob" title="Probabilidad de victoria estimada ahora mismo (draft + oro + dragones)"><b class="${p >= 55 ? 'it-g' : p <= 45 ? 'it-r' : 'it-y'}">${Math.round(p)}%</b><small>Victoria</small></div>` : ''}
   </div>`;
 
   // ---- Columna izquierda: tu campeón ----

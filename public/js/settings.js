@@ -8,7 +8,8 @@ const SETTINGS_UI = [
     ['bench', '· Comparativa con tu rango', 'Tu CS/min, KDA y visión/min frente a lo habitual en el rango de tu objetivo (o en el tuyo), desde el minuto 5. Referencia estimada.'],
     ['skill', 'Qué habilidad subir', 'Aviso encima de tu barra de habilidades cuando tienes un punto sin gastar.'],
     ['back', 'Vuelve a base', 'Aviso cuando te llega el oro para tu objeto o un componente importante (con X para quitarlo).'],
-    ['loading', 'Scouting en la pantalla de carga', 'Rango, experiencia con el campeón, rachas y premades de los 10 jugadores mientras carga.'],
+    ['loading', 'Scouting en la pantalla de carga', 'Rango, experiencia y KDA con el campeón, rachas y premades de los 10 jugadores mientras carga.'],
+    ['loadingCards', '· Encima de cada carta', 'Cada jugador, pegado arriba de su carta de la pantalla de carga (cada uno se cierra con su X). Si lo apagas, se ven dos paneles a los lados que puedes mover.'],
     ['timers', 'Timers de objetivos', 'Avisos de dragón, Barón, etc. en el overlay.'],
     ['timersPopup', '· Solo 1 minuto antes', 'Aparecen 1 minuto antes de que salga el objetivo, se quitan con la X y desaparecen al matarlo. Si lo apagas, se ven siempre.'],
     ['timerDragon', '· Dragón', ''], ['timerGrubs', '· Larvas del Vacío', ''], ['timerHerald', '· Heraldo', ''], ['timerBaron', '· Barón', ''], ['timerInhibs', '· Inhibidores', 'Cuándo reaparecen los inhibidores destruidos.'],
@@ -41,6 +42,7 @@ const SETTINGS_UI = [
     ['badges', 'Logros de la partida', 'MVP/ACE, primera sangre, multikills, más farm, más daño, remontadas… en el análisis y en el informe de fin de partida.'],
     ['mvp', 'MVP, ACE y puesto en la tabla', 'Etiqueta de cada jugador en «Los 10 jugadores» según una puntuación estimada.'],
     ['rowDetails', 'Detalle en las filas del historial', 'Runas, logros y los 10 jugadores en cada partida del historial y de «Partidas recientes».'],
+    ['suggestions', 'Sugerencias del coach de tu rol', 'Consejos suaves que no cuentan como fallo (p. ej. el trinket de un ADC o un ward de control ocasional en top o mid).'],
   ] },
   { group: 'home', title: 'Inicio', icon: 'home', desc: 'Qué bloques ves en la pantalla de inicio.', items: [
     ['form', 'Forma reciente en la cabecera', 'Winrate con el filtro elegido, racha y tus últimas 10 partidas.'],
@@ -122,7 +124,7 @@ function viewSettings() {
       <div class="s muted" style="margin:-4px 0 12px">${esc(sec.desc)}</div>
       ${sec.group === 'overlay' && masterOn ? overlayPlaceRow() : ''}
       ${sec.master ? `<div class="opt master">${'<div class="opt-l">Activado</div>'}<button class="sw ${masterOn ? 'on' : ''}" role="switch" aria-checked="${masterOn}" onclick="setOpt('${sec.group}.${sec.master}', ${!masterOn})"><span></span></button></div>` : ''}
-      <div class="opts">${sec.items.map(([k, l, d]) => toggleRow(sec.group, k, l, d, !masterOn || (timersOff && k.startsWith('timer') && k !== 'timers'))).join('')}</div>`, { cls: sec.master && masterOn ? 'gold' : '' });
+      <div class="opts">${sec.items.map(([k, l, d]) => toggleRow(sec.group, k, l, d, !masterOn || (timersOff && k.startsWith('timer') && k !== 'timers') || (sec.group === 'overlay' && k === 'loadingCards' && !on('overlay.loading')))).join('')}</div>`, { cls: sec.master && masterOn ? 'gold' : '' });
   });
   return `<div class="grid g-2"><div class="col">${cards[0]}${cards[1]}${cards[4]}</div><div class="col">${cards[2]}${cards[3]}${cards[5]}
     ${riotKeyPanel()}

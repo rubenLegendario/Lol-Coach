@@ -10,10 +10,11 @@ import { iteroView } from './engine/iterolive.js';
 import { initChampInfo } from './data/champinfo.js';
 import { tierList, getBuild, getAramBuild, normPos, setGamePatch } from './data/stats.js';
 import { patchOf, installedGameVersion, clientGameVersion } from './gameversion.js';
-import { scoutPlayer } from './players.js';
+import { scoutPlayer, champLineText } from './players.js';
 import { analyzeChampSelect, analyzeAramSelect } from './engine/champselect.js';
 import { analyzeInGame } from './engine/ingame.js';
 import { AlertTracker } from './engine/alerts.js';
+import { coachFor } from './engine/coach/index.js';
 import { evaluateDraft, factorsView } from './engine/draft.js';
 import { applyRunes, applySpells, applyItemSet } from './actions.js';
 import { listGames, analyzeGame, gameSummary } from './engine/postgame.js';
@@ -490,8 +491,7 @@ export class App extends EventEmitter {
       const L = this.state.loadingGame;
       const row = (p, side) => {
         const sc = p.scout;
-        const champLine = !sc ? '' : sc.champGames ? `${sc.champGames} part. con él${sc.champWinRate != null ? ` · ${Math.round(sc.champWinRate * 100)}%` : ''}`
-          : sc.champMastery ? `Maestría ${sc.champMastery.level} · ${Math.round(sc.champMastery.points / 1000)}k pts` : 'Primera vez con el campeón';
+        const champLine = champLineText(sc);
         return {
           champ: p.champ?.name || '?',
           icon: p.champ?.icon || null,
@@ -500,13 +500,20 @@ export class App extends EventEmitter {
           rank: sc ? sc.rank.text.replace(/ · /, ' ') : '',
           wr: sc?.rank.winRate != null ? Math.round(sc.rank.winRate * 100) : null,
           champLine,
+          champKda: sc?.champKda != null ? Math.round(sc.champKda * 10) / 10 : null,
           tags: (sc?.tags || []).slice(0, 2).map((t) => ({ text: t.text, tone: t.type === 'info' ? 'info' : (t.type === 'strong') === (side === 'enemy') ? 'bad' : 'good' })),
           loading: !sc,
         };
       };
       return {
         active: true, edit, pos: { ...pos, loadAlly: ov.posLoadAlly, loadEnemy: ov.posLoadEnemy }, gameTime: 0,
-        loading: { allies: L.allies.map((p) => row(p, 'ally')), enemies: L.enemies.map((p) => row(p, 'enemy')) },
+        loading: {
+          // cards: cada jugador encima de su carta; panels: dos paneles laterales movibles
+          mode: ov.loadingCards ? 'cards' : 'panels',
+          // Lado de tu equipo: la fila de arriba de la pantalla de carga es el equipo azul y la de abajo el rojo
+          allySide: L.allySide === 'red' ? 'red' : 'blue',
+          allies: L.allies.map((p) => row(p, 'ally')), enemies: L.enemies.map((p) => row(p, 'enemy')),
+        },
         cs: null, skill: null, objectives: [],
       };
     }
@@ -525,8 +532,9 @@ export class App extends EventEmitter {
     const opp = g.laneOppIndex >= 0 ? g.players[g.laneOppIndex] : null;
     const t = g.gameTime;
     const role = g.me.pos;
-    const TARGET = { TOP: 7.0, MIDDLE: 7.3, BOTTOM: 7.5, JUNGLE: 5.8 };
-    const target = g.aram ? null : TARGET[role] ?? (role === 'UTILITY' ? null : 7.0);
+    // CS/min objetivo del coach de tu rol (support: ninguno; sin posición conocida: 7.0 de referencia)
+    const coach = coachFor(role, { aram: g.aram });
+    const target = g.aram ? null : coach.id === 'neutral' ? 7.0 : coach.targets.csMin;
     const start = role === 'JUNGLE' ? 90 : 65; // primeras oleadas / primeros campamentos
     const expected = target && t > start ? Math.round((target * (t - start)) / 60) : 0;
     const o = g.objectives;
@@ -572,7 +580,9 @@ export class App extends EventEmitter {
     const gold = g.me.gold;
     const items = me?.items || [];
     const hasWard = items.some((i) => i.id === 2055);
-    const wardTip = !g.aram && !hasWard && t > 360 && gold - (sh.missing > 0 ? sh.spend : sh.remaining) >= 75 ? ' + Guardián de control' : '';
+    // Solo los coaches que lo piden (support y jungla) añaden el ward de control; a un ADC no se le recomienda
+    const wantsWard = coachFor(g.me.pos, { aram: g.aram }).backWard;
+    const wardTip = wantsWard && !hasWard && t > 360 && gold - (sh.missing > 0 ? sh.spend : sh.remaining) >= 75 ? ' + Guardián de control' : '';
     const dead = !!me?.isDead;
     if (sh.missing <= 0) {
       return {
@@ -922,7 +932,8 @@ export class App extends EventEmitter {
     const allies = team(mineIsOne ? t1 : t2);
     const enemies = team(mineIsOne ? t2 : t1);
     const all = [...allies, ...enemies];
-    return { queueId: gd.queue?.id || null, allies, enemies, loaded: all.filter((p) => p.scout).length, total: all.length };
+    // teamOne de la sesión del cliente = equipo azul (100, ORDER); teamTwo = rojo (200, CHAOS)
+    return { queueId: gd.queue?.id || null, allySide: mineIsOne ? 'blue' : 'red', allies, enemies, loaded: all.filter((p) => p.scout).length, total: all.length };
   }
 
   async attachGameScouting(view) {

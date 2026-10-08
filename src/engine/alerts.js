@@ -4,6 +4,7 @@
  * Cada alerta trae un texto corto para leerlo en voz alta.
  */
 import { ddragon } from '../data/ddragon.js';
+import { coachFor } from './coach/index.js';
 
 const MAX = 12;
 
@@ -55,6 +56,8 @@ export class AlertTracker {
     if (!prev) return this.alerts; // primera foto: solo memorizamos
 
     const opp = snap.oppName;
+    // Los textos de objetivos y de la muerte del rival dependen del rol (coach de tu posición)
+    const coach = coachFor(view.me?.pos, { aram: view.aram });
     // Objetos completos del rival de línea (su power spike)
     if (pw && opp) {
       this.cat = 'oppItems';
@@ -76,7 +79,10 @@ export class AlertTracker {
       }
       // Tu rival muere
       this.cat = 'oppDeath';
-      if (!prev.oppDead && snap.oppDead) this.push(t, 'good', 'skull', `${opp} ha muerto (${pw.oppRespawn} s): empuja la oleada, coge placas o ayuda a tu jungla.`, `${opp} ha muerto. Empuja.`);
+      if (!prev.oppDead && snap.oppDead) {
+        const m = coach.live.oppDead(opp, pw.oppRespawn);
+        this.push(t, 'good', 'skull', m.text, m.voice);
+      }
       // Cambio de quién manda en la línea
       this.cat = 'advantage';
       if (prev.verdict && snap.verdict !== prev.verdict) {
@@ -107,7 +113,10 @@ export class AlertTracker {
       const o = view.objectives?.[key];
       if (!o) continue;
       const left = o.at - t;
-      if (left <= 60 && left > 30) this.once(`${key}-60-${o.at}`, t, 'info', key === 'dragon' ? 'flame' : 'crown', `${o.label} en 1 minuto: prepara visión y empuja tu línea.`, `${o.label} en un minuto.`);
+      if (left <= 60 && left > 30) {
+        const m = coach.live.objective(key, o.label);
+        this.once(`${key}-60-${o.at}`, t, 'info', key === 'dragon' ? 'flame' : 'crown', m.text, m.voice);
+      }
       if (left <= 0 && left > -20) this.once(`${key}-up-${o.at}`, t, 'warn', key === 'dragon' ? 'flame' : 'crown', `${o.label} ha aparecido.`, `${o.label} vivo.`);
     }
     return this.alerts;

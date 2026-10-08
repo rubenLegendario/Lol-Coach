@@ -29,10 +29,17 @@ static partial class Program
     {
         root = AppDomain.CurrentDomain.BaseDirectory;
         port = ReadPort();
-        // LoL Coach.exe --overlay-test salida.png [puerto] : genera una imagen del overlay para comprobar el diseño
+        // LoL Coach.exe --overlay-test salida.png [puerto] [ancho]x[alto] : genera una imagen del overlay para comprobar el diseño
         if (args.Length >= 2 && args[0] == "--overlay-test")
         {
-            OverlayForm.RenderTest(args.Length >= 3 ? int.Parse(args[2]) : port, args[1], 1920, 1080);
+            int tw = 1920, th = 1080;
+            if (args.Length >= 4)
+            {
+                var wh = args[3].ToLowerInvariant().Split('x');
+                if (wh.Length == 2) { int.TryParse(wh[0], out tw); int.TryParse(wh[1], out th); }
+                if (tw < 320 || th < 240) { tw = 1920; th = 1080; }
+            }
+            OverlayForm.RenderTest(args.Length >= 3 ? int.Parse(args[2]) : port, args[1], tw, th);
             return;
         }
         // LoL Coach.exe --update-check-test salida.txt : dice qué haría el actualizador (sin descargar nada)

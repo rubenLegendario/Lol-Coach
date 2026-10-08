@@ -1,6 +1,7 @@
 /** Acciones que modifican el cliente del LoL: runas, hechizos de invocador y set de objetos. */
 import { ddragon } from './data/ddragon.js';
 import { POS_LABEL } from './data/stats.js';
+import { coachFor } from './engine/coach/index.js';
 
 const PAGE_PREFIX = 'LoL Coach';
 const FLASH = 4;
@@ -73,7 +74,8 @@ export async function applyItemSet(lcu, plan, summonerId) {
     block('Core (más jugado)', coreIds),
     block('Alternativas del core', uniq(build.core.slice(1).flatMap((c) => c.ids)).filter((id) => !coreIds.includes(id))),
     block('Situacionales', build.situational),
-    block('Consumibles', [2003, 2055]),
+    // El ward de control solo en los roles cuyo coach lo pide (support y jungla)
+    block('Consumibles', coachFor(plan.pos, { aram: plan.aram }).itemSetWards ? [2003, 2055] : [2003]),
   ].filter((b) => b.items.length);
 
   const sets = await lcu.get(`/lol-item-sets/v1/item-sets/${summonerId}/sets`);

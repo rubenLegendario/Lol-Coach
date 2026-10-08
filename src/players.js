@@ -61,6 +61,7 @@ async function loadPlayer(lcu, puuid) {
     ids,
     rank: rankOf(stats),
     games,
+    rankedOnly: ranked.length >= 5,
     mastery: (Array.isArray(mastery) ? mastery : []).map((m) => ({ champId: m.championId, level: m.championLevel, points: m.championPoints })),
   };
 }
@@ -81,6 +82,10 @@ export async function scoutPlayer(lcu, puuid, champId, pos = null) {
 
   const onChamp = champId ? p.games.filter((g) => g.champId === champId) : [];
   const champMastery = champId ? p.mastery.find((m) => m.champId === champId) : null;
+  // KDA con ese campeón: solo con sus partidas con él entre las analizadas (null si no hay ninguna)
+  const champKda = onChamp.length
+    ? onChamp.reduce((s, g) => s + (g.k || 0) + (g.a || 0), 0) / Math.max(1, onChamp.reduce((s, g) => s + (g.d || 0), 0))
+    : null;
   const kda = recent.length
     ? recent.reduce((s, g) => s + g.k + g.a, 0) / Math.max(1, recent.reduce((s, g) => s + g.d, 0))
     : null;
@@ -130,9 +135,32 @@ export async function scoutPlayer(lcu, puuid, champId, pos = null) {
     kda,
     streak,
     champGames: onChamp.length,
+    champKda,
+    // Muestra de la que salen champGames/champWinRate/champKda: sus últimas partidas de la Grieta del cliente (máx. 20),
+    // solo las clasificatorias si tiene 5 o más
+    sampleGames: p.games.length,
+    sampleRanked: !!p.rankedOnly,
     champWinRate: onChamp.length ? onChamp.filter((g) => g.win).length / onChamp.length : null,
     champMastery: champMastery ? { level: champMastery.level, points: champMastery.points } : null,
     topMastery: p.mastery.slice(0, 3).map((m) => ({ ...ddragon.champView(m.champId), points: m.points })),
     tags,
   };
+}
+
+/**
+ * Línea corta "experiencia con el campeón" para el overlay de la pantalla de carga:
+ *   "3 de 20 últimas · 67% · KDA 3.1"  (de sus últimas partidas; "3 de 14 ranked" si solo cuentan las clasificatorias)
+ *   "Maestría 7 · 150k pts" / "Primera vez con el campeón" si no lo ha jugado en esas partidas.
+ * Sin datos del jugador: cadena vacía.
+ */
+export function champLineText(sc) {
+  if (!sc) return '';
+  if (sc.champGames) {
+    const of = sc.sampleGames ? ` de ${sc.sampleGames} ${sc.sampleRanked ? 'ranked' : 'últimas'}` : '';
+    const wr = sc.champWinRate != null ? ` · ${Math.round(sc.champWinRate * 100)}%` : '';
+    const kda = sc.champKda != null ? ` · KDA ${sc.champKda.toFixed(1)}` : '';
+    return `${sc.champGames}${of}${wr}${kda}`;
+  }
+  if (sc.champMastery) return `Maestría ${sc.champMastery.level} · ${Math.round(sc.champMastery.points / 1000)}k pts`;
+  return 'Primera vez con el campeón';
 }

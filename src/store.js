@@ -148,12 +148,12 @@ export function getTrends(puuid) {
 
 // ---------- Ajustes (qué partes de la app están activadas) ----------
 export const DEFAULT_SETTINGS = {
-  overlay: { enabled: true, locked: true, bench: true, posCs: null, posTimers: null, posSkill: null, posBack: null, posLoadAlly: null, posLoadEnemy: null, back: true, loading: true, cs: true, timers: true, timersPopup: true, skill: true, timerDragon: true, timerGrubs: true, timerHerald: true, timerBaron: true, timerInhibs: true },
+  overlay: { enabled: true, locked: true, bench: true, posCs: null, posTimers: null, posSkill: null, posBack: null, posLoadAlly: null, posLoadEnemy: null, back: true, loading: true, loadingCards: true, cs: true, timers: true, timersPopup: true, skill: true, timerDragon: true, timerGrubs: true, timerHerald: true, timerBaron: true, timerInhibs: true },
   alerts: { enabled: true, toasts: true, voice: false, oppItems: true, levels: true, advantage: true, myItems: true, oppDeath: true, canBuy: true, fedEnemies: true, objectives: true },
   live: { power: true, alertsPanel: true, draft: true, insights: true, comps: true, pairs: true, buy: true, situational: true, skills: true, objectives: true, spells: true },
   champSelect: { dodge: true, notes: true, picks: true, bans: true, matchups: true, why: true, autoRunes: true, autoSpells: true, autoItems: true },
   home: { form: true, session: true, goal: true, goalOdds: true, goalPlan: true, lpCard: true, perf: true, coach: true, recent: true, lpChart: true, trends: true, forecast: true, champs: true, deathMap: true, coachPhases: true, coachDeep: true },
-  postgame: { badges: true, mvp: true, rowDetails: true },
+  postgame: { badges: true, mvp: true, rowDetails: true, suggestions: true },
   riot: { apiKey: '' },
 };
 

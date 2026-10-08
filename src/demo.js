@@ -3,6 +3,8 @@
  *   npm run demo            -> selección de campeón
  *   npm run demo -- ingame  -> partida
  *   npm run demo -- aram / aram-ingame
+ *   npm run demo -- loading [rojo] [3]  -> pantalla de carga (rojo: tu equipo en el lado rojo, abajo;
+ *                                          un número: jugadores por equipo, para ver las cartas centradas)
  */
 import { analyzeChampSelect, analyzeAramSelect } from './engine/champselect.js';
 import { analyzeInGame } from './engine/ingame.js';
@@ -110,7 +112,7 @@ export async function runDemo(app, mode, file) {
   const fakeScout = (rank, wr, streak, tags) => ({
     rank: { text: rank, winRate: wr, wins: 120, losses: 100 },
     recent: Array.from({ length: 10 }, (_, i) => ({ win: i % 3 !== 0 })),
-    tags, kda: 2.8, champGames: 4, champWinRate: 0.75, champMastery: { level: 12, points: 150000 },
+    tags, kda: 2.8, champGames: 4, champWinRate: 0.75, champKda: 3.1, sampleGames: 20, sampleRanked: false, champMastery: { level: 12, points: 150000 },
   });
 
   const update = () => {
@@ -147,8 +149,16 @@ export async function runDemo(app, mode, file) {
       ];
       const mk = (p, i) => ({ isMe: p.isMe, name: p.name, champ: p.champ, pos: p.pos, premade: [7, 9].includes(i) ? 1 : 0, scout: scouts[i] });
       const ps = g.players.map(mk);
-      ps[3].scout = scouts[3] || { ...fakeScout('Oro II · 33 LP', 0.53, 1, []), champGames: 9, champWinRate: 0.61 };
-      app.state.loadingGame = { allies: ps.slice(0, 5), enemies: ps.slice(5), loaded: 10, total: 10 };
+      ps[3].scout = scouts[3] || { ...fakeScout('Oro II · 33 LP', 0.53, 1, []), champGames: 9, champWinRate: 0.61, champKda: 4.2, sampleGames: 14, sampleRanked: true };
+      ps[8].scout = { ...ps[8].scout, champGames: 0, champWinRate: null, champKda: null, champMastery: null };
+      const opts = String([file, ...process.argv.slice(process.argv.indexOf('--demo') + 3)].join(' '));
+      const n = Math.min(5, Math.max(1, Number(opts.match(/\d/)?.[0]) || 5));
+      const order = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
+      const byPos = (a, b) => order.indexOf(a.pos) - order.indexOf(b.pos);
+      const allies = ps.slice(0, 5).sort(byPos).slice(0, n);
+      if (!allies.some((p) => p.isMe)) allies[allies.length - 1] = ps.find((p) => p.isMe);
+      const enemies = ps.slice(5).sort(byPos).slice(0, n);
+      app.state.loadingGame = { allySide: /rojo|red/.test(opts) ? 'red' : 'blue', allies, enemies, loaded: n * 2, total: n * 2 };
       app.state.status = 'loading';
       app.state.phase = 'InProgress';
       app.state.inGame = null;

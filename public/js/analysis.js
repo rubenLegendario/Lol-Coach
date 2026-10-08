@@ -122,7 +122,7 @@ function viewAnalysis(a) {
       <div class="row nw" style="gap:18px;align-items:center">${img(a.champ, 'xl')}
         <div style="min-width:0;flex:1">
           <div class="result ${a.win ? 'good' : 'bad'}">${a.win ? 'Victoria' : 'Derrota'}</div>
-          <div class="row" style="margin-top:8px"><b>${esc(a.champ?.name)}</b>${a.pos ? `${posIcon(a.pos)}<span class="muted">${esc(a.posLabel)}</span>` : ''}<span class="dim">· ${esc(a.queue)} · ${a.duration} min · ${timeAgo(a.date)}</span></div>
+          <div class="row" style="margin-top:8px"><b>${esc(a.champ?.name)}</b>${a.pos ? `${posIcon(a.pos)}<span class="muted">${esc(a.posLabel)}</span>` : ''}<span class="dim">· ${esc(a.queue)} · ${a.duration} min · ${timeAgo(a.date)}</span>${a.coach?.label ? `<span class="chip sm" title="Los consejos de este análisis son los de tu rol">${icon('book')}${esc(a.coach.label)}</span>` : ''}</div>
           ${a.opp ? `<div class="mu">${img(a.opp.champ, 's')}<span>contra <b>${esc(a.opp.champ?.name)}</b></span><span class="dim">${esc(a.opp.name)}</span></div>` : ''}
         </div>
         <div class="row" style="gap:22px">
@@ -138,7 +138,8 @@ function viewAnalysis(a) {
     ${a.players?.length ? playersPanel(a) : ''}
     <div class="grid g-2">
       <div class="col">
-        ${panel(a.improve.length ? `Las ${a.improve.length} cosas que más te costaron` : 'Qué mejorar', 'target', a.improve.length ? `<div class="stack">${a.improve.map((x, i) => `<div class="habit"><div class="n">${i + 1}</div><div style="min-width:0"><div class="t">${esc(x.title)}</div><div class="d">${esc(x.detail)}</div><div class="tip">${icon('bulb')}<span>${esc(x.tip)}</span></div></div></div>`).join('')}</div>` : '<div class="muted">Nada grave que destacar en esta partida.</div>', { cls: 'gold' })}
+        ${panel(a.improve.length ? (a.improve.length === 1 ? 'Lo que más te costó' : `Las ${a.improve.length} cosas que más te costaron`) : 'Qué mejorar', 'target', a.improve.length ? `<div class="stack">${a.improve.map((x, i) => `<div class="habit"><div class="n">${i + 1}</div><div style="min-width:0"><div class="t">${esc(x.title)}</div><div class="d">${esc(x.detail)}</div><div class="tip">${icon('bulb')}<span>${esc(x.tip)}</span></div></div></div>`).join('')}</div>` : '<div class="muted">Nada grave que destacar en esta partida.</div>', { cls: 'gold', right: a.coach?.label ? esc(a.coach.label) : '' })}
+        ${on('postgame.suggestions') && a.suggestions?.length ? panel('Sugerencias del coach', 'bulb', `<div class="stack">${a.suggestions.map((x) => `<div class="insight">${icon('bulb')}<span><b>${esc(x.title)}</b> · ${esc(x.detail)}</span></div>`).join('')}</div>`, { right: 'No cuentan como fallo' }) : ''}
         ${a.strengths.length ? panel('Lo que hiciste bien', 'star', `<div class="stack">${a.strengths.map((x) => `<div class="strength">${icon('check')}<span><b>${esc(x.title)}</b> · ${esc(x.detail)}</span></div>`).join('')}</div>`) : ''}
         ${a.deaths?.length ? panel('Tus muertes', 'skull', `<div class="dm-grid">
             ${a.deaths.some((d) => d.map) ? `<button class="dmap-btn" onclick="openMap(${a.gameId}, null, '${viewing ? a.viewer.puuid : ''}')" title="Ampliar y explorar la partida">` + deathMap(a.deaths.filter((d) => d.map).map((d) => ({ ...d.map, gank: d.gank, early: d.minute < 14, title: `${d.time} · ${d.zone}${d.killer ? ' · ' + d.killer.name : ''}` })), { numbered: true }) + `<span class="dmap-hint">${icon('target')}Explorar la partida</span></button>` : ''}
@@ -156,7 +157,7 @@ function viewAnalysis(a) {
             ${row('Participación en kills', st.kp + '%', tg.kp != null ? tg.kp + '%' : null, null, cmp(st.kp, tg.kp))}
             ${row('Daño del equipo', st.dmgShare + '%', tg.dmgShare != null ? tg.dmgShare + '%' : null, null, cmp(st.dmgShare, tg.dmgShare))}
             ${row('Visión por minuto', st.visionMin, tg.visionMin, bl?.visionMin, cmp(st.visionMin, tg.visionMin))}
-            ${row('Wards de control', st.controlWards, a.sr ? '2+' : null, null, a.sr ? cmp(st.controlWards, 2) : '')}
+            ${row('Wards de control', st.controlWards, tg.controlWards != null ? tg.controlWards + '+' : null, null, cmp(st.controlWards, tg.controlWards))}
             ${row('Oro por minuto', st.goldMin, null, null)}
           </tbody></table>${bl ? `<div class="xs dim" style="margin-top:8px">Tu media: últimas ${bl.games} partidas en la Grieta.</div>` : ''}`)}
         ${a.lane ? panel('Fase de líneas', 'swords', `<table class="tbl"><thead><tr><th></th><th>CS</th><th>Dif. CS</th><th>Dif. oro</th></tr></thead><tbody>
@@ -275,7 +276,7 @@ function reportCard(a, lp) {
   const goal = top ? top.tip : a.strengths?.[0] ? `Repite lo que te ha funcionado: ${a.strengths[0].title.toLowerCase()}.` : 'Mantén el mismo nivel: CS constante y sin muertes evitables.';
   return `<section class="panel report ${a.win ? 'win' : 'loss'}" style="margin-bottom:16px"><div class="pb">
     <div class="rp-head">
-      <div class="rp-res"><span class="lbl">Informe de la partida</span><div class="dsp ${a.win ? 'good' : 'bad'}">${a.win ? 'Victoria' : 'Derrota'}</div>
+      <div class="rp-res"><span class="lbl">Informe de la partida${a.coach?.label ? ` · ${esc(a.coach.label)}` : ''}</span><div class="dsp ${a.win ? 'good' : 'bad'}">${a.win ? 'Victoria' : 'Derrota'}</div>
         <div class="s muted">${esc(a.champ?.name || '')} · ${esc(a.stats.kda)} · ${a.stats.csMin} CS/min · ${a.duration} min</div></div>
       <div class="rp-k"><div class="v ${lp == null ? 'dim' : lp >= 0 ? 'good' : 'bad'}">${lp == null ? (pending ? '…' : '—') : (lp > 0 ? '+' : '') + lp}</div><div class="k">${pending ? 'LP (calculando)' : 'LP'}</div></div>
       ${o ? `<div class="rp-k"><div class="v g-${o.grade}">${o.grade}</div><div class="k">Nota (${o.score}/100)</div></div>` : ''}

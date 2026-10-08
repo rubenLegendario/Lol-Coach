@@ -378,12 +378,19 @@ class OverlayForm : Form
         r = DrawTimers(g, d, gameTime, s, w, h, moved, edit, boxes); if (!r.IsEmpty) boxes["timers"] = r;
         r = DrawSkill(g, d, s, w, h, moved); if (!r.IsEmpty) boxes["skill"] = r;
         r = DrawBack(g, d, s, w, h, moved, edit, boxes); if (!r.IsEmpty) boxes["back"] = r;
-        r = DrawLoading(g, d, s, w, h, moved, edit, boxes, "ally"); if (!r.IsEmpty) boxes["loadAlly"] = r;
-        r = DrawLoading(g, d, s, w, h, moved, edit, boxes, "enemy"); if (!r.IsEmpty) boxes["loadEnemy"] = r;
+        var load = d.ContainsKey("loading") ? d["loading"] as Dictionary<string, object> : null;
+        bool cards = load != null && load.ContainsKey("mode") && Convert.ToString(load["mode"]) == "cards";
+        if (cards)
+            DrawLoadingCards(g, load, w, h, edit, boxes); // encima de cada carta: no se arrastran (solo tienen su X)
+        else
+        {
+            r = DrawLoading(g, d, s, w, h, moved, edit, boxes, "ally"); if (!r.IsEmpty) boxes["loadAlly"] = r;
+            r = DrawLoading(g, d, s, w, h, moved, edit, boxes, "enemy"); if (!r.IsEmpty) boxes["loadEnemy"] = r;
+        }
         if (edit)
         {
             foreach (var kv in boxes) EditFrame(g, kv.Value, WidgetName[kv.Key], s);
-            boxes["lock"] = EditBanner(g, S, w, preview);
+            boxes["lock"] = EditBanner(g, S, w, h, preview, cards);
         }
         // Candado en la esquina de cada widget (siempre en modo colocar; si no, solo en el que tiene el ratón)
         foreach (var k in Widgets)
@@ -410,6 +417,9 @@ class OverlayForm : Form
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             using (var bg = new LinearGradientBrush(new Rectangle(0, 0, w, h), Color.FromArgb(255, 40, 60, 45), Color.FromArgb(255, 25, 35, 55), 45f)) g.FillRectangle(bg, 0, 0, w, h);
+            // Pantalla de carga: cartas simuladas (solo en esta imagen de prueba) donde calculamos que van las del juego
+            var load = d.ContainsKey("loading") ? d["loading"] as Dictionary<string, object> : null;
+            if (load != null) DrawMockCards(g, load, w, h);
             bool edit = d.ContainsKey("edit") && d["edit"] is bool && (bool)d["edit"];
             bool preview = d.ContainsKey("preview") && d["preview"] is bool && (bool)d["preview"];
             // Primera pasada para lanzar la descarga de iconos; la segunda ya los pinta
@@ -585,16 +595,17 @@ class OverlayForm : Form
     }
 
     /** Aviso del modo colocar con el botón «Bloquear». Devuelve el rectángulo del botón. */
-    static RectangleF EditBanner(Graphics g, float s, int w, bool preview)
+    static RectangleF EditBanner(Graphics g, float s, int w, int h, bool preview, bool cards)
     {
         using (Font f = F(15, false, s), fb = F(16, true, s))
         {
-            string t = preview ? "Arrastra los widgets (vista previa sin partida) · Ctrl+Mayús+L" : "Arrastra los widgets · Ctrl+Mayús+L";
+            // Pantalla de carga con los widgets encima de las cartas: no se mueven; el aviso va entre las dos filas
+            string t = cards ? "Los widgets de la pantalla de carga van sobre cada carta · Ctrl+Mayús+L" : preview ? "Arrastra los widgets (vista previa sin partida) · Ctrl+Mayús+L" : "Arrastra los widgets · Ctrl+Mayús+L";
             var tsz = g.MeasureString(t, f);
             var bsz = g.MeasureString("Bloquear", fb);
             float bw = bsz.Width + 36 * s, hgt = 46 * s;
             float total = tsz.Width + bw + 40 * s;
-            var r = new RectangleF((w - total) / 2, 110 * s, total, hgt);
+            var r = new RectangleF((w - total) / 2, cards ? (h - hgt) / 2 : 110 * s, total, hgt);
             Card(g, r, s, GoldLine);
             Txt(g, t, f, Fg, r.X + 16 * s, r.Y + (hgt - tsz.Height) / 2);
             var btn = new RectangleF(r.Right - bw - 7 * s, r.Y + 7 * s, bw, hgt - 14 * s);
@@ -1011,7 +1022,8 @@ class OverlayForm : Form
                 DrawImageRound(g, Convert.ToString(p["icon"]), new RectangleF(r.X + 10 * s, y + 6 * s, 38 * s, 38 * s), 8 * s);
                 float tx = r.X + 56 * s, right = r.Right - 10 * s;
                 // Línea 1: campeón (+ premade) y rango
-                string rank = Convert.ToString(p["rank"]);
+                // Rango y % de victorias en ranked (la línea 2 queda para el campeón: partidas, % y KDA con él)
+                string rank = Convert.ToString(p["rank"]) + (p["wr"] != null ? " · " + p["wr"] + "%" : "");
                 var rs = g.MeasureString(rank, sf);
                 Txt(g, rank, sf, Muted, right - rs.Width, y + 5 * s);
                 string champ = me ? "Tú · " + p["champ"] : Convert.ToString(p["champ"]);
@@ -1029,7 +1041,7 @@ class OverlayForm : Form
                 }
                 // Línea 2: experiencia con el campeón y winrate en ranked
                 bool loading = p["loading"] is bool && (bool)p["loading"];
-                string l2 = loading ? "Cargando…" : Convert.ToString(p["champLine"]) + (p["wr"] != null ? " · " + p["wr"] + "% en ranked" : "");
+                string l2 = loading ? "Cargando…" : Convert.ToString(p["champLine"]);
                 Txt(g, Fit(g, l2, tf, right - tx), tf, Muted, tx, y + 22 * s);
                 // Línea 3: etiquetas
                 var tags = p["tags"] as ArrayList;
@@ -1051,6 +1063,201 @@ class OverlayForm : Form
             }
         }
         return r;
+    }
+
+    // ---------- Pantalla de carga: un widget encima de cada carta ----------
+    // Geometría de las cartas, sacada de los archivos de interfaz del propio juego (leídos del disco como datos, sin
+    // tocar el juego: Game/DATA/FINAL/UI.wad.client, escenas ClientStates/LoadingScreen/UX/PlayerCards/UIShared y
+    // ClientStates/LoadingScreen/UX/LoadingScreenClassic). Sus rectángulos vienen sobre una resolución de referencia
+    // de 1920x1440 (SourceResolutionWidth/Height) con IgnoreGlobalScale = 1 (no les afecta la escala del HUD):
+    //  - Cada carta es una celda de 395x720 (LSPC_HitRegion). Dos filas de 720 = los 1440 de alto: arriba el equipo
+    //    azul (100, ORDER) y abajo el rojo (200, CHAOS).
+    //  - El arte del campeón (LSPC_CharacterSplash) ocupa x 24..360, y 56..669 dentro de la celda. En la parte de abajo
+    //    del arte (y 470..644) van el nombre del campeón, hechizos, runas y nombre del jugador; arriba solo el
+    //    cristal/blasón de rango (LSPC1_SummonerCrystal_Icon, y 8..126), que nuestro widget ya repite.
+    //  - Los iconos de línea (RoleAssignmentLayout: anclados al centro de la pantalla, y 715..757, entre las dos filas)
+    //    caen a -782, -380, +8, +398 y +788 del centro: celdas de ~395 centradas en horizontal. 4x395 + 336 = 1916:
+    //    las 5 cartas caben justas en 1920 de ancho (4:3); en 16:9 o más ancho la escala es alto/1440 y sobran márgenes.
+    //  - Deducido (lo coloca el código del juego, no esos archivos): que las filas empiecen en y = 0 y 720, y que con
+    //    menos de 5 jugadores las cartas se centren con la misma separación.
+    // El widget va pegado al borde SUPERIOR del arte: abajo están el nombre, los hechizos y las runas (información del
+    // juego que no queremos tapar); arriba solo el blasón de rango y la parte alta del arte (pelo o fondo).
+    const float LsRefW = 1920, LsRefH = 1440, LsCellW = 395, LsCellH = 720, LsArtX = 24, LsArtY = 56, LsArtW = 336, LsArtH = 613;
+
+    /** Escala de la pantalla de carga: alto/1440 (si la ventana es más estrecha que 4:3, ancho/1920). */
+    static float LoadingScale(int w, int h)
+    {
+        float k = h / LsRefH;
+        if (LsRefW * k > w) k = w / LsRefW;
+        return k;
+    }
+
+    /** Rectángulo del arte de la carta index (0..count-1) de la fila row (0 = arriba/azul, 1 = abajo/rojo). */
+    static RectangleF CardArt(int w, int h, int row, int index, int count)
+    {
+        float k = LoadingScale(w, h);
+        float top = (h - LsRefH * k) / 2;
+        float cx = w / 2f + (index - (count - 1) / 2f) * LsCellW * k;
+        return new RectangleF(cx - LsCellW * k / 2 + LsArtX * k, top + row * LsCellH * k + LsArtY * k, LsArtW * k, LsArtH * k);
+    }
+
+    /** Fila de cada equipo: la de arriba es siempre el equipo azul. */
+    static int LoadingRow(Dictionary<string, object> L, bool allies)
+    {
+        bool red = L.ContainsKey("allySide") && Convert.ToString(L["allySide"]) == "red";
+        return allies == !red ? 0 : 1;
+    }
+
+    /** Solo para --overlay-test: dibuja cartas falsas donde calculamos que están las del juego. */
+    static void DrawMockCards(Graphics g, Dictionary<string, object> L, int w, int h)
+    {
+        if (!L.ContainsKey("mode") || Convert.ToString(L["mode"]) != "cards") return;
+        float k = LoadingScale(w, h);
+        foreach (var side in new[] { "allies", "enemies" })
+        {
+            var list = L.ContainsKey(side) ? L[side] as ArrayList : null;
+            if (list == null) continue;
+            int row = LoadingRow(L, side == "allies");
+            for (int i = 0; i < list.Count; i++)
+            {
+                var a = CardArt(w, h, row, i, list.Count);
+                using (var b = new LinearGradientBrush(a, Color.FromArgb(255, 92, 80, 104), Color.FromArgb(255, 30, 28, 36), 90f)) g.FillRectangle(b, a);
+                using (var pen = new Pen(Color.FromArgb(255, 160, 140, 90), Math.Max(1, 2 * k))) g.DrawRectangle(pen, a.X, a.Y, a.Width, a.Height);
+                // Zona de nombre, hechizos y runas del juego (y 470..644 de la celda)
+                var nb = new RectangleF(a.X, a.Y + (470 - LsArtY) * k, a.Width, (644 - 470) * k);
+                using (var b = new SolidBrush(Color.FromArgb(255, 20, 18, 24))) g.FillRectangle(b, nb);
+                var p = list[i] as Dictionary<string, object>;
+                using (var f = new Font("Segoe UI", 26 * k, FontStyle.Bold, GraphicsUnit.Pixel))
+                using (var fs = new Font("Segoe UI", 18 * k, FontStyle.Regular, GraphicsUnit.Pixel))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center })
+                {
+                    using (var b = new SolidBrush(Color.FromArgb(255, 230, 220, 190))) g.DrawString(Convert.ToString(p["champ"]).ToUpperInvariant(), f, b, new RectangleF(nb.X, nb.Y + 10 * k, nb.Width, 40 * k), sf);
+                    using (var b = new SolidBrush(Color.FromArgb(255, 150, 150, 150))) g.DrawString("(carta simulada)", fs, b, new RectangleF(nb.X, nb.Y + 120 * k, nb.Width, 30 * k), sf);
+                }
+            }
+        }
+        // Iconos de línea entre las dos filas (y 715..757), como referencia
+        using (var b = new SolidBrush(Color.FromArgb(255, 120, 110, 90)))
+            for (int i = 0; i < 5; i++)
+            {
+                float cx = w / 2f + (i - 2) * LsCellW * k, top = (h - LsRefH * k) / 2;
+                g.FillEllipse(b, cx - 21 * k, top + 715 * k, 42 * k, 42 * k);
+            }
+    }
+
+    static void DrawLoadingCards(Graphics g, Dictionary<string, object> L, int w, int h, bool edit, Dictionary<string, RectangleF> boxes)
+    {
+        float k = LoadingScale(w, h);
+        // Texto: algo mayor que la escala de la carta (a 1080p, ~14 px el rango y ~12 px el resto) y con un mínimo
+        // para que se lea en ventanas pequeñas (720p). El ancho siempre es el del arte: lo que no cabe se recorta con «…»
+        float t = Math.Max(k * 1.3f, 0.8f);
+        foreach (var side in new[] { "allies", "enemies" })
+        {
+            var list = L.ContainsKey(side) ? L[side] as ArrayList : null;
+            if (list == null || list.Count == 0) continue;
+            bool allies = side == "allies";
+            int row = LoadingRow(L, allies);
+            for (int i = 0; i < list.Count; i++)
+            {
+                var p = list[i] as Dictionary<string, object>;
+                if (p == null) continue;
+                string key = "loadcard@" + side + ":" + i + ":" + Convert.ToString(p["champ"]);
+                if (!edit && Dismissed.Contains(key)) continue;
+                DrawCardWidget(g, p, CardArt(w, h, row, i, list.Count), k, t, allies, edit, boxes, key);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Widget de una carta, pegado arriba del arte:
+    ///   [TÚ] Oro II 14 LP          51% ranked  ×
+    ///   4 de 20 últimas · 75% · KDA 3.1
+    ///   [Premade] Etiqueta 1
+    ///   Etiqueta 2
+    /// </summary>
+    static void DrawCardWidget(Graphics g, Dictionary<string, object> p, RectangleF art, float k, float t, bool allies, bool edit, Dictionary<string, RectangleF> boxes, string key)
+    {
+        bool me = p["me"] is bool && (bool)p["me"];
+        bool loading = p["loading"] is bool && (bool)p["loading"];
+        int premade = p.ContainsKey("premade") && p["premade"] != null ? Convert.ToInt32(p["premade"]) : 0;
+        Color pc = premade > 0 ? PremadeColors[(premade - 1) % PremadeColors.Length] : Color.Empty;
+        var tags = p.ContainsKey("tags") ? p["tags"] as ArrayList : null;
+        int nTags = loading || tags == null ? 0 : Math.Min(2, tags.Count);
+
+        float m = 5 * k, pad = 6 * t, lh1 = 19 * t, lh = 16.5f * t;
+        int lines = loading ? 1 : 2 + Math.Max(nTags, premade > 0 ? 1 : 0);
+        var r = new RectangleF(art.X + m, art.Y + m, art.Width - 2 * m, pad * 2 + lh1 + (lines - 1) * lh);
+
+        Color border = me ? Gold : premade > 0 ? Color.FromArgb(210, pc.R, pc.G, pc.B) : allies ? Color.FromArgb(90, 74, 169, 255) : Color.FromArgb(90, 255, 84, 104);
+        using (var path = Round(r, 7 * t))
+        using (var bg = new SolidBrush(Color.FromArgb(175, 8, 11, 17)))
+        using (var pen = new Pen(border, Math.Max(1, (me || premade > 0 ? 1.6f : 1f) * t)))
+        {
+            g.FillPath(bg, path);
+            if (me) using (var tint = new SolidBrush(Color.FromArgb(40, 210, 167, 91))) g.FillPath(tint, path);
+            g.DrawPath(pen, path);
+        }
+        using (Font f1 = F(14.5f, true, t), f2 = F(12.5f, false, t), ft = F(12, false, t), fb = F(10.5f, true, t))
+        {
+            float x = r.X + pad, right = r.Right - pad, y = r.Y + pad;
+            // X para cerrar este widget (solo con el overlay bloqueado, como los demás avisos)
+            if (!edit)
+            {
+                float xw = 16 * t;
+                var xr = new RectangleF(r.Right - xw - 3 * t, r.Y + 3 * t, xw, xw);
+                DrawX(g, xr, t * 0.85f);
+                boxes["x:" + key] = xr;
+                right = xr.X - 2 * t;
+            }
+            // Línea 1: [TÚ] rango ...... % de victorias en ranked
+            if (me)
+            {
+                var bs = g.MeasureString("TÚ", fb);
+                var br = new RectangleF(x, y + (lh1 - 15 * t) / 2, bs.Width + 4 * t, 15 * t);
+                using (var path = Round(br, 4 * t))
+                using (var b = new SolidBrush(Gold)) g.FillPath(b, path);
+                using (var b = new SolidBrush(Color.FromArgb(255, 27, 19, 6))) g.DrawString("TÚ", fb, b, br.X + 2 * t, br.Y + (br.Height - bs.Height) / 2);
+                x = br.Right + 5 * t;
+            }
+            if (loading)
+            {
+                Txt(g, "Cargando…", f2, Muted, x, y + (lh1 - g.MeasureString("Cargando…", f2).Height) / 2);
+                return;
+            }
+            string wr = p["wr"] != null ? p["wr"] + "% ranked" : "";
+            float wrW = wr.Length > 0 ? g.MeasureString(wr, f2).Width : 0;
+            if (wrW > 0) Txt(g, wr, f2, Muted, right - wrW, y + (lh1 - g.MeasureString(wr, f2).Height) / 2);
+            string rank = Convert.ToString(p["rank"]);
+            if (string.IsNullOrEmpty(rank)) rank = "–";
+            Txt(g, Fit(g, rank, f1, right - wrW - 4 * t - x), f1, me ? Gold : Fg, x, y + (lh1 - g.MeasureString(rank, f1).Height) / 2);
+            x = r.X + pad;
+            right = r.Right - pad;
+            y += lh1;
+            // Línea 2: experiencia con el campeón (partidas de sus últimas · % · KDA con él)
+            string cl = Convert.ToString(p["champLine"]);
+            Txt(g, Fit(g, string.IsNullOrEmpty(cl) ? "–" : cl, f2, right - x), f2, Fg, x, y);
+            y += lh;
+            // Líneas 3 y 4: premade y hasta 2 etiquetas
+            float tx = x;
+            if (premade > 0)
+            {
+                var bs = g.MeasureString("Premade", fb);
+                var br = new RectangleF(x, y + (lh - 14 * t) / 2 + 1 * t, bs.Width + 4 * t, 14 * t);
+                using (var path = Round(br, 4 * t))
+                using (var b = new SolidBrush(Color.FromArgb(70, pc.R, pc.G, pc.B))) g.FillPath(b, path);
+                Txt(g, "Premade", fb, pc, br.X + 2 * t, br.Y + (br.Height - bs.Height) / 2);
+                tx = br.Right + 5 * t;
+            }
+            for (int i = 0; i < nTags; i++)
+            {
+                var tg = tags[i] as Dictionary<string, object>;
+                string tone = Convert.ToString(tg["tone"]);
+                Color c = tone == "bad" ? Loss : tone == "good" ? Win : Ally;
+                Txt(g, Fit(g, Convert.ToString(tg["text"]), ft, right - tx), ft, c, tx, y);
+                y += lh;
+                tx = x;
+            }
+        }
     }
 
     // Habilidad a subir: centrada, encima de la barra de habilidades, por defecto

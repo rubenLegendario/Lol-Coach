@@ -3,6 +3,7 @@ import { ddragon } from '../data/ddragon.js';
 import { champProfile } from '../data/champinfo.js';
 import { normPos } from '../data/stats.js';
 import { buildView } from './views.js';
+import { coachFor, coachInfo } from './coach/index.js';
 
 // Objetos situacionales por necesidad y por "clase" de tu campeón. Se validan contra el parche actual.
 const SITUATIONAL = {
@@ -393,7 +394,7 @@ function spikeTrack(player, core, currentGold = null) {
  * Ventana de poder contra tu rival de línea: niveles (y quién tiene la R), objetos completos,
  * oro en objetos y la curva de fuerza de cada campeón según el minuto de la partida.
  */
-function powerWindow(meP, opp, gameTime, plan, currentGold = null) {
+function powerWindow(meP, opp, gameTime, plan, currentGold = null, coach = coachFor(null)) {
   if (!opp) return null;
   const reasons = [];
   let score = 0;
@@ -436,7 +437,8 @@ function powerWindow(meP, opp, gameTime, plan, currentGold = null) {
   }
   if (opp.isDead) {
     score += 1;
-    reasons.push({ type: 'good', text: `${oppName} está muerto (${Math.ceil(opp.respawnTimer || 0)} s): empuja, coge placas o ayuda a tu jungla` });
+    // Qué hacer mientras está muerto depende de tu rol (texto del coach, sin el punto final)
+    reasons.push({ type: 'good', text: coach.live.oppDead(oppName, Math.ceil(opp.respawnTimer || 0)).text.replace(/\.$/, '') });
   }
   const verdict = score >= 1.5 ? 'ahead' : score <= -1.5 ? 'behind' : 'even';
   return {
@@ -535,7 +537,8 @@ export function analyzeInGame(live, plan) {
     objectives: aram ? null : objectives(live, myTeam),
     goldDiff: allyProfile.gold - threat.gold,
     laneOppIndex: opp ? live.allPlayers.indexOf(opp) : -1,
-    power: aram ? null : powerWindow(meP, opp, gameTime, plan?.champId === myKey ? plan : null, gold),
+    power: aram ? null : powerWindow(meP, opp, gameTime, plan?.champId === myKey ? plan : null, gold, coachFor(normPos(meP.position))),
+    coach: coachInfo(coachFor(normPos(meP.position), { aram })),
     players,
     myTeam,
   };
