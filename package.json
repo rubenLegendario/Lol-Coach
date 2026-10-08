@@ -1,6 +1,6 @@
 {
   "name": "lol-coach",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "updateRepo": "rubenLegendario/Lol-Coach",
   "description": "Asistente en tiempo real para League of Legends: picks, runas, builds, info de rivales y consejos en partida",
   "type": "module",
